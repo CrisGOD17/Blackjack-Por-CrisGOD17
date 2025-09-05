@@ -18,10 +18,14 @@ public class PantallaJuego extends JFrame {
     private JPanel panelCartasCasa;
     private JTextArea areaInfo;
     private JLabel labelVictorias, labelDerrotas, labelEmpates, labelSaldo;
+    
+    private JButton botonPedirCarta;
+    private JButton botonNuevoJuego;
+    private JButton botonMostrarResultado;
+
 
     public PantallaJuego() {
         puntuacion = new Puntuacion(1000);
-        nuevoJuego();
 
         this.setPreferredSize(new Dimension(720, 480));
         setLayout(new BorderLayout());
@@ -48,23 +52,38 @@ public class PantallaJuego extends JFrame {
         panelCentro.add(areaInfo, BorderLayout.CENTER);
 
         // Botones para jugar
-        JButton botonPedirCarta = new JButton("Pedir Carta");
+        botonPedirCarta = new JButton("Pedir Carta");
         botonPedirCarta.addActionListener(e -> {
             manoUsuario.add(baraja.darCartaAleatoria());
             actualizarPantalla();
+
+            // Verificar si el usuario se pasó de 21
+            if (calcularValor(manoUsuario) > 21) {
+                areaInfo.append("\n Te has pasado de 21. Has perdido.\n");
+                puntuacion.incrementarDerrota();
+                botonPedirCarta.setEnabled(false);  // Deshabilitar "Pedir Carta"
+                botonMostrarResultado.setEnabled(false);  // Deshabilitar "Mostrar Resultado"
+                actualizarEstadisticas();
+                revalidate();
+                repaint();
+            }
         });
 
-        JButton botonNuevoJuego = new JButton("Nuevo Juego");
+
+        botonNuevoJuego = new JButton("Nuevo Juego");
         botonNuevoJuego.addActionListener(e -> {
             nuevoJuego();
             mostrarManoInicial();
             actualizarEstadisticas();
+            botonPedirCarta.setEnabled(true);
+            botonMostrarResultado.setEnabled(true);
         });
 
-        JButton botonMostrarResultado = new JButton("Mostrar Resultado");
+        botonMostrarResultado = new JButton("Mostrar Resultado");
         botonMostrarResultado.addActionListener(e -> {
             mostrarResultado();
-            actualizarEstadisticas();
+            botonPedirCarta.setEnabled(false);  // Deshabilitar "Pedir Carta"
+            botonMostrarResultado.setEnabled(false); // Deshabilitar "Mostrar Resultado"
         });
 
         JPanel panelBotones = new JPanel();
@@ -78,9 +97,12 @@ public class PantallaJuego extends JFrame {
         add(panelCentro, BorderLayout.CENTER);        // Panel de botones y estadísticas
         add(panelCartasUsuario, BorderLayout.SOUTH);  // Panel de cartas del usuario
 
+        // Inicializar el juego después de configurar todos los componentes
+        nuevoJuego();
         mostrarManoInicial();
         actualizarEstadisticas();
     }
+
 
     private void nuevoJuego() {
         baraja = new Baraja();
@@ -90,24 +112,28 @@ public class PantallaJuego extends JFrame {
         manoUsuario.add(baraja.darCartaAleatoria());
         manoCasa.add(baraja.darCartaAleatoria());
         manoCasa.add(baraja.darCartaAleatoria());
+
+        botonPedirCarta.setEnabled(true); // Habilitar "Pedir Carta"
+        botonMostrarResultado.setEnabled(true); // Habilitar "Mostrar Resultado"
     }
+
 
     private void mostrarManoInicial() {
         panelCartasUsuario.removeAll();
         panelCartasCasa.removeAll();
 
-        // Mostrar las cartas del usuario
         for (Carta carta : manoUsuario) {
-            JLabel cartaLabel = new JLabel(carta.getImagen());
+            ImageIcon cartaEscalada = escalarImagen(carta.getImagen(),  80, 100); // Escalar a 100x150 píxeles
+            JLabel cartaLabel = new JLabel(cartaEscalada);
             panelCartasUsuario.add(cartaLabel);
         }
 
-        // Mostrar una carta visible y una carta oculta para el crupier
-        JLabel primeraCartaCrupier = new JLabel(manoCasa.get(0).getImagen());
-        JLabel cartaOculta = new JLabel(new ImageIcon(getClass().getResource("/cards/carta_oculta.png")));
+        JLabel cartaVisible = new JLabel(escalarImagen(manoCasa.get(0).getImagen(), 80, 100));
+        JLabel cartaOculta = new JLabel(escalarImagen(
+            new ImageIcon(getClass().getResource("/cards/carta_oculta.png")), 80, 100));
 
-        panelCartasCasa.add(primeraCartaCrupier); // Primera carta visible
-        panelCartasCasa.add(cartaOculta); // Segunda carta oculta
+        panelCartasCasa.add(cartaVisible); // Carta visible del crupier
+        panelCartasCasa.add(cartaOculta); // Carta oculta del crupier
 
         actualizarPantallaTexto();
         revalidate();
@@ -119,7 +145,8 @@ public class PantallaJuego extends JFrame {
         panelCartasUsuario.removeAll();
 
         for (Carta carta : manoUsuario) {
-            JLabel cartaLabel = new JLabel(carta.getImagen());
+        	
+            JLabel cartaLabel = new JLabel(escalarImagen(carta.getImagen(),  80, 100));
             panelCartasUsuario.add(cartaLabel);
         }
 
@@ -129,33 +156,39 @@ public class PantallaJuego extends JFrame {
     }
 
     private void mostrarResultado() {
-        // El crupier juega su turno
+        int valorUsuario = calcularValor(manoUsuario);
+
+        if (valorUsuario > 21) {
+            areaInfo.setText("Tu mano: " + manoUsuario + " (Valor: " + valorUsuario + ")\n");
+            areaInfo.append("Te has pasado de 21. Has perdido.\n");
+            puntuacion.incrementarDerrota();
+            botonPedirCarta.setEnabled(false);  // Deshabilitar "Pedir Carta"
+            botonMostrarResultado.setEnabled(false); 
+            actualizarEstadisticas();
+            revalidate();
+            repaint();
+            return; // Finalizar el método, ya no hay necesidad de jugar el turno del crupier
+        }
+        
+        
         while (calcularValor(manoCasa) < 17) {
             manoCasa.add(baraja.darCartaAleatoria());
-            actualizarPantalla();  // Actualizamos la pantalla después de cada carta del crupier
+            actualizarPantalla();
         }
 
         panelCartasCasa.removeAll();
-
-        // Mostrar todas las cartas del crupier
+        
         for (Carta carta : manoCasa) {
-            JLabel cartaLabel = new JLabel(carta.getImagen());
+            JLabel cartaLabel = new JLabel(escalarImagen(carta.getImagen(),  80, 100));  
             panelCartasCasa.add(cartaLabel);
         }
 
-        // Calcular los valores finales
-        int valorUsuario = calcularValor(manoUsuario);
         int valorCasa = calcularValor(manoCasa);
 
-        // Mostrar el texto con los valores finales de las manos
         areaInfo.setText("Tu mano: " + manoUsuario + " (Valor: " + valorUsuario + ")\n" +
                          "Mano de la casa: " + manoCasa + " (Valor: " + valorCasa + ")\n");
 
-        // Determinar el ganador y actualizar las estadísticas
-        if (valorUsuario > 21) {
-            areaInfo.append("Te has pasado de 21. Has perdido.\n");
-            puntuacion.incrementarDerrota();
-        } else if (valorCasa > 21) {
+        if (valorCasa > 21) {
             areaInfo.append("El crupier se ha pasado de 21. Has ganado.\n");
             puntuacion.incrementarVictoria();
         } else if (valorUsuario > valorCasa) {
@@ -169,12 +202,13 @@ public class PantallaJuego extends JFrame {
             puntuacion.incrementarEmpate();
         }
 
-        // Actualizar las estadísticas
+        botonPedirCarta.setEnabled(false);  // Deshabilitar "Pedir Carta"
+        botonMostrarResultado.setEnabled(false); // Deshabilitar "Mostrar Resultado"
         actualizarEstadisticas();
-
         revalidate();
         repaint();
     }
+
 
 
 
@@ -219,5 +253,11 @@ public class PantallaJuego extends JFrame {
         labelDerrotas.setText("Derrotas: " + puntuacion.getDerrotas());
         labelEmpates.setText("Empates: " + puntuacion.getEmpates());
         labelSaldo.setText("Saldo: " + puntuacion.getSaldo());
+    }
+    
+    private ImageIcon escalarImagen(ImageIcon imagenOriginal, int ancho, int alto) {
+        Image imagen = imagenOriginal.getImage(); // Obtener la imagen original
+        Image imagenEscalada = imagen.getScaledInstance(ancho, alto, Image.SCALE_SMOOTH); // Escalar la imagen
+        return new ImageIcon(imagenEscalada); // Retornar como ImageIcon
     }
 }

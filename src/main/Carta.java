@@ -1,5 +1,7 @@
 package main;
 
+import java.awt.Image;
+
 import javax.swing.ImageIcon;
 
 public class Carta {
@@ -28,8 +30,13 @@ public class Carta {
     }
 
     public ImageIcon getImagen() {
-        return new ImageIcon(getClass().getResource(rutaImagen)); // Cargar imagen desde el recurso
+        return new ImageIcon(getClass().getResource(rutaImagen)); 
+        // Cargar imagen desde el recurso
     }
+    
+    
+   
+
 
     @Override
     public String toString() {
